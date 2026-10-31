@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-31",
+  "references": [
+    {
+      "name": "Cloudflare Skills",
+      "repository": "https://github.com/cloudflare/skills",
+      "commit": "1a33048817d06df12882cb881dfc754e7039954a",
+      "license": "Apache-2.0",
+      "role": "Pinned source reference for Cloudflare Workers, D1, AI, and deployment guidance; not an application dependency.",
+      "referenceUrl": "https://github.com/cloudflare/skills/tree/1a33048817d06df12882cb881dfc754e7039954a",
+      "codexInstallCommands": [
+        "codex plugin marketplace add cloudflare/skills",
+        "codex plugin add cloudflare@cloudflare"
+      ],
+      "standaloneInstallCommand": "npx skills add https://github.com/cloudflare/skills",
+      "repositoryReadme": "https://github.com/cloudflare/skills/blob/1a33048817d06df12882cb881dfc754e7039954a/README.md",
+      "localBootstrapHelper": "scripts/install-skills.mjs",
+      "bootstrapCommand": "npm run setup:skills",
+      "installationPath": ".agents/upstream/cloudflare-skills and selected copies in .agents/skills/"
+    },
+    {
+      "name": "Cloudflare Vinext / Next.js Workers guide",
+      "referenceUrl": "https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/",
+      "frameworkPackage": "vinext",
+      "frameworkVersion": "1.4.0",
+      "role": "Official deployment/build guidance for the retained Vinext application; package version is pinned in the project lockfile."
+    },
+    {
+      "name": "Cloudflare MCP documentation",
+      "referenceUrl": "https://developers.cloudflare.com/agents/model-context-protocol/cloudflare-mcp-server/",
+      "endpoint": "https://mcp.cloudflare.com/mcp",
+      "authentication": "OAuth account connection; optional developer tooling, not an application dependency.",
+      "role": "Official documentation reference for the optional authenticated MCP integration."
+    },
+    {
+      "name": "Cloudflare Deploy buttons",
+      "referenceUrl": "https://developers.cloudflare.com/workers/platform/deploy-buttons/",
+      "role": "Official documentation reference for the README deployment button and its public repository requirement."
+    }
+  ]
+}

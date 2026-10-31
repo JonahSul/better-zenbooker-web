@@ -1,0 +1,17 @@
+.account-menu { position: relative; display: inline-flex; align-items: center; font-family: inherit; }
+.account-menu-trigger { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; padding: .65rem .85rem; border: 1px solid #b8cfc1; border-radius: 9px; background: #fff; color: #065a2e; font: inherit; font-size: .85rem; cursor: pointer; }
+.account-menu-trigger svg { flex: none; }
+.account-menu-content { width: min(290px, calc(100vw - 24px)); padding: .45rem; background: #fff; color: #1d231c; border: 1px solid #b8cfc1; border-radius: 12px; box-shadow: 0 12px 35px #1d231c24; z-index: 1100; }
+.account-menu-content [data-slot="dropdown-menu-item"] { display: flex; align-items: center; gap: .6rem; min-height: 44px; padding: .6rem .7rem; border-radius: 6px; font-size: .85rem; text-decoration: none; color: inherit; cursor: pointer; }
+.account-menu-content [data-slot="dropdown-menu-label"] { padding: .55rem .7rem; font-size: .75rem; color: #526157; }
+.account-menu-content .account-menu-profile { display: grid; gap: .25rem; color: #1d231c; overflow-wrap: anywhere; }
+.account-menu-content [data-highlighted] { outline: none; background: #eaf4ee; }
+.account-menu-content [data-disabled] { opacity: .55; cursor: default; }
+.account-menu-content [data-slot="dropdown-menu-separator"] { height: 1px; margin: .35rem 0; background: #dbe5df; }
+.account-menu-content .account-menu-google img { display: block; width: 144px; height: 32px; max-width: 100%; }
+.account-menu-trigger:focus-visible { outline: 3px solid #2f9cd1; outline-offset: 3px; }
+.account-menu-status { position: absolute; top: 100%; right: 0; max-width: 290px; color: #1d231c; background: #fff; font-size: .75rem; }
+.account-menu-status:empty { display: none; }
+@media(max-width:480px){.account-menu-trigger{padding:.6rem}.account-menu-trigger>span{font-size:.8rem}}
+
+.header-contact{flex-wrap:nowrap}

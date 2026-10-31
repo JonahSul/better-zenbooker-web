@@ -1,0 +1,1 @@
+CREATE TABLE business_site(installation_id TEXT NOT NULL,stage TEXT NOT NULL CHECK(stage IN ('draft','published')),revision INTEGER NOT NULL,details_json TEXT NOT NULL,updated_at INTEGER NOT NULL,PRIMARY KEY(installation_id,stage));

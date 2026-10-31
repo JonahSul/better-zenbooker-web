@@ -1,0 +1,1 @@
+ALTER TABLE `vector_outbox` ADD `target_json` text;

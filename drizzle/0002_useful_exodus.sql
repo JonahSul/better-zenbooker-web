@@ -1,0 +1,1 @@
+ALTER TABLE `google_connections` ADD `maps_url` text;

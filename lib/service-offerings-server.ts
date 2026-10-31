@@ -1,0 +1,11 @@
+import {env} from 'cloudflare:workers';
+import {z} from 'zod/v3';
+import {ServiceOfferingStore,offeringDraftInput,offeringPublishInput,offeringWithdrawInput} from './service-offerings';
+import {SITE_PROJECT_ID,secretRuntime} from './runtime-secrets';
+import {getGoogleAdmin,readSmallBody,safeJson,rejected} from './admin-auth-server';
+export {offeringDraftInput,offeringPublishInput,offeringWithdrawInput};
+export const offeringStatusInput=z.object({}).strict();
+export function serviceOfferingStore(){if(!env.DB)throw new Error('offerings_unavailable');return new ServiceOfferingStore(env.DB,SITE_PROJECT_ID);}
+export async function publicOfferingsRoute(){try{return safeJson(await serviceOfferingStore().publicOfferings());}catch{return safeJson({revision:0,expiresAt:null,offerings:[]});}}
+export type OfferingOwnerDependencies={getAdmin?:(request:Request)=>Promise<{siteUserId:string;subject:string}|null>;ownerId?:string;store?:Pick<ServiceOfferingStore,'status'|'saveDraft'|'publish'|'withdraw'>};
+export async function offeringsOwnerRoute(request:Request,operation:'status'|'save_draft'|'publish'|'withdraw',deps:OfferingOwnerDependencies={}){try{const admin=await(deps.getAdmin??getGoogleAdmin)(request),owner=deps.ownerId??secretRuntime().SITE_OWNER_USER_ID,url=new URL(request.url);if(!admin)return rejected(request,'Workspace owner sign-in required.',403);if(url.protocol!=='https:'||url.search||request.method!=='POST'||request.headers.get('origin')!==url.origin)return rejected(request,'Use the secure Bookings page.',403);let input:unknown;try{input=(operation==='status'?offeringStatusInput:operation==='save_draft'?offeringDraftInput:operation==='publish'?offeringPublishInput:offeringWithdrawInput).parse(JSON.parse(await readSmallBody(request)));}catch{return safeJson({error:'Check the current service list and refresh before saving.'},400);}const store=deps.store??serviceOfferingStore();return safeJson(operation==='status'?await store.status():operation==='save_draft'?await store.saveDraft(input,admin.subject):operation==='publish'?await store.publish(input,admin.subject):await store.withdraw(input,admin.subject));}catch{return safeJson({error:'The service list changed or is unavailable. Refresh before trying again.'},409);}}

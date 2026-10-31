@@ -1,0 +1,6 @@
+export type PurposeGrant={subject_hash:string;analytics:number;experiments:number;expires_at:number;revision:number};
+export class PurposeGrantStore{
+ constructor(public db:D1Database,public now=Date.now){}
+ async read(hash:string){return this.db.prepare('SELECT subject_hash,analytics,experiments,expires_at,revision FROM measurement_grants WHERE subject_hash=?').bind(hash).first<PurposeGrant>();}
+ async save(hash:string,purpose:'analytics'|'experiments',grant:boolean,expectedRevision:number,expiresAt:number){const analytics=purpose==='analytics'&&grant?1:0,experiments=purpose==='experiments'&&grant?1:0;const updated=await this.db.prepare('UPDATE measurement_grants SET analytics=?,experiments=?,expires_at=?,updated_at=?,revision=revision+1 WHERE subject_hash=? AND revision=? RETURNING subject_hash,analytics,experiments,expires_at,revision').bind(analytics,experiments,expiresAt,this.now(),hash,expectedRevision).first<PurposeGrant>();if(updated||expectedRevision!==0)return updated;return this.db.prepare('INSERT OR IGNORE INTO measurement_grants(subject_hash,analytics,experiments,expires_at,updated_at,revision) VALUES(?,?,?,?,?,1) RETURNING subject_hash,analytics,experiments,expires_at,revision').bind(hash,analytics,experiments,expiresAt,this.now()).first<PurposeGrant>();}
+}

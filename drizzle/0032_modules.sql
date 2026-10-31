@@ -1,0 +1,2 @@
+CREATE TABLE IF NOT EXISTS module_settings (installation_id TEXT NOT NULL,module_id TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),config_json TEXT NOT NULL DEFAULT '{}',revision INTEGER NOT NULL DEFAULT 0,updated_at INTEGER NOT NULL,updated_by TEXT NOT NULL,PRIMARY KEY(installation_id,module_id));
+CREATE TABLE IF NOT EXISTS module_settings_audit (id TEXT PRIMARY KEY,installation_id TEXT NOT NULL,module_id TEXT NOT NULL,revision INTEGER NOT NULL,actor TEXT NOT NULL,enabled INTEGER NOT NULL,config_json TEXT NOT NULL,created_at INTEGER NOT NULL);

@@ -1,0 +1,4 @@
+import {customerAccountRoute} from '../../../../lib/customer-account-server';
+export const dynamic='force-dynamic';
+export const GET=(request:Request)=>customerAccountRoute(request,'account');
+export const DELETE=(request:Request)=>customerAccountRoute(request,'account');

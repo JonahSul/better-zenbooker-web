@@ -1,0 +1,19 @@
+import {compositionDefinition,sections,HARD_RULES,type CompositionDefinition} from './experiment-core';
+import artifacts from '../generated/public-artifacts.json';
+import {DEMO_ORIGIN} from './site-config';
+import {homeStructuredData} from './discovery';
+export const PUBLIC_RENDERER_VERSION='public-v4-m2';
+export type PublicComposition=CompositionDefinition;
+export const publicArtifacts=artifacts;
+const escape=(value:string)=>value.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!));
+export async function compilePublicDocument(definition:PublicComposition={},source:typeof artifacts & {publicContextDigest?:string}=artifacts){definition=compositionDefinition.parse(definition);let body=source.body;if(definition.headline)body=body.replace(/<h1([^>]*)>.*?<\/h1>/,(_match,attributes:string)=>'<h1'+attributes+'>'+escape(definition.headline!)+'</h1>');if(definition.cta)body=body.replace('Book a service <span>↗</span>',escape(definition.cta)+' <span>↗</span>');if(definition.process){let index=0;body=body.replace(/<h3>(Tell us what you need|Confirm the details|Plan for the next season|Choose your service|See available times|Finish your booking)<\/h3><p>.*?<\/p>/g,()=>{const row=definition.process![index++];return '<h3>'+escape(row.title)+'</h3><p>'+escape(row.text)+'</p>';});if(index!==3)throw new Error('Process template changed');}
+if(definition.processLayout==='steps')body=body.replace('class="section wrap process"','class="section wrap process process-layout-steps"');
+const starts=['<section class="hero wrap">','<section class="section wrap" id="services">','<section class="coverage" id="coverage">','<section class="section wrap process','<div data-public-island="reviews"></div>','<section class="request-section" id="request">','<section class="section wrap faq" id="questions">'];
+const positions=starts.map(marker=>body.indexOf(marker));const endMain=body.indexOf('</main>');if(positions.some((value,index)=>value<0||(index>0&&value<=positions[index-1]))||endMain<positions[6])throw new Error('Public section template changed');
+const pieces=new Map(sections.map((id,index)=>[id,body.slice(positions[index],positions[index+1]??endMain)+'<div class="wrap" data-feedback-section="'+id+'"></div>']));body=body.slice(0,positions[0])+(definition.order??sections).map(id=>pieces.get(id)!).join('')+body.slice(endMain);
+const contextMeta=source.publicContextDigest&&/^[0-9a-f]{64}$/.test(source.publicContextDigest)?'<meta name="public-context-digest" content="'+source.publicContextDigest+'">':'';const html='<!doctype html><html lang="en"><head>'+contextMeta+'<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Business website</title><meta name="description" content="Owner approved business information."><link rel="canonical" href="'+DEMO_ORIGIN+'/"><meta property="og:title" content="Business website"><meta property="og:description" content="Owner approved business information."><meta property="og:url" content="'+DEMO_ORIGIN+'/"><meta property="og:site_name" content="Business website"><meta property="og:type" content="website">'+source.styles.map(url=>'<link rel="stylesheet" href="'+escape(url)+'">').join('')+'</head><body>'+body+'<script type="application/ld+json">'+JSON.stringify(homeStructuredData).replace(/</g,'\\u003c')+'</script><script type="module" src="'+escape(source.entry)+'"></script></body></html>';const identity=JSON.stringify({renderer:source.rendererVersion,assets:source.assetManifestHash,rules:HARD_RULES,definition,html});const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(identity))),b=>b.toString(16).padStart(2,'0')).join('');return {html,hash,rendererVersion:source.rendererVersion,assetManifestHash:source.assetManifestHash};}
+
+
+
+
+

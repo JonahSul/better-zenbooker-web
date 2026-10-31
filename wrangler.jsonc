@@ -1,0 +1,22 @@
+{
+  "name": "better-zenbooker-web",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-31",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "vars": {
+    "INSTALLATION_ID": "configure-a-stable-installation-id",
+    "PUBLIC_ORIGIN": "https://configure-your-domain.invalid"
+  },
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS"
+  }
+}

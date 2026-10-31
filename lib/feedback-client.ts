@@ -1,0 +1,4 @@
+export const FEEDBACK_TIMING_METRIC='experiment_feedback';
+export function readNavigationFeedbackReference(entries:readonly unknown[]):string|null{const navigation=entries[0] as {serverTiming?:{name?:unknown;description?:unknown}[]}|undefined;const matches=navigation?.serverTiming?.filter(metric=>metric.name===FEEDBACK_TIMING_METRIC)??[];const value=matches.length===1?matches[0].description:null;return typeof value==='string'&&value.length<=4096&&/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)?value:null;}
+let initialized=false;let reference:string|null=null;
+export function documentFeedbackReference(){if(!initialized){initialized=true;try{reference=typeof performance!=='undefined'?readNavigationFeedbackReference(performance.getEntriesByType('navigation')):null;}catch{reference=null;}}return reference;}

@@ -1,0 +1,6 @@
+import {consentKey} from './purpose-consent-core';
+const encode=(bytes:Uint8Array)=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const decode=(value:string)=>Uint8Array.from(atob(value.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+async function key(secret:string){if(!consentKey(secret))throw new Error('Consent key unavailable');return crypto.subtle.importKey('raw',Uint8Array.from(atob(secret),c=>c.charCodeAt(0)),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);}
+export async function signPurposeProof(value:unknown,secret:string,domain:string){const body=encode(new TextEncoder().encode(JSON.stringify(value)));return body+'.'+encode(new Uint8Array(await crypto.subtle.sign('HMAC',await key(secret),new TextEncoder().encode(domain+':'+body))));}
+export async function verifyPurposeProof(value:string|null|undefined,secret:string|undefined,domain:string):Promise<unknown>{try{if(!value||value.length>2048||!secret)return null;const [body,signature,...extra]=value.split('.');if(extra.length||!body||!signature||!await crypto.subtle.verify('HMAC',await key(secret),decode(signature),new TextEncoder().encode(domain+':'+body)))return null;return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(decode(body)));}catch{return null;}}

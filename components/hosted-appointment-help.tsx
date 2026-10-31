@@ -1,0 +1,4 @@
+'use client';
+import {Mail} from 'lucide-react';
+import {HostedBookingLink} from './hosted-booking-directory';
+export default function HostedAppointmentHelp(){return <><section className="customer-card"><h2>Manage your visit through your confirmation.</h2><p>Scheduling is managed through Zenbooker. Follow the instructions in your booking confirmation to review or change an existing appointment.</p><div className="customer-actions"><HostedBookingLink className="customer-button" placement="account">Make a new booking ↗</HostedBookingLink></div></section><section className="customer-card"><Mail aria-hidden="true" size={27} strokeWidth={1.8}/><h2>Have your confirmation handy.</h2><p>Your confirmation contains the details for your booking. If you cannot find it, <button data-measurement-element="appointments_contact" type="button" className="support-inline-link" data-support-open>ask for help</button> for help with the right appointment.</p></section></>;}

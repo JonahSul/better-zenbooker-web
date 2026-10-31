@@ -1,0 +1,10 @@
+import {env} from 'cloudflare:workers';
+import {z} from 'zod/v3';
+import {Ga4PropertyConfigurationStore,ga4PropertyConfigurationInput} from './ga4-property-configuration';
+import {secretRuntime,SITE_PROJECT_ID} from './runtime-secrets';
+import {getGoogleAdmin,rejected,safeJson,readSmallBody} from './admin-auth-server';
+export {ga4PropertyConfigurationInput};
+export const ga4PropertyConfigurationStatusInput=z.object({}).strict();
+export function ga4PropertyConfigurationService(){if(!env.DB)throw new Error('configuration_unavailable');const store=new Ga4PropertyConfigurationStore(env.DB,SITE_PROJECT_ID);return {status:()=>store.read(secretRuntime().GA4_PROPERTY_ID),save:(input:unknown,actor:string)=>store.save(input,actor)};}
+export type Ga4PropertyConfigurationDependencies={getAdmin?:(request:Request)=>Promise<{siteUserId:string;subject:string}|null>;ownerId?:string;service?:ReturnType<typeof ga4PropertyConfigurationService>};
+export async function ga4PropertyConfigurationOwnerRoute(request:Request,deps:Ga4PropertyConfigurationDependencies={}){try{const admin=await(deps.getAdmin??getGoogleAdmin)(request),owner=deps.ownerId??secretRuntime().SITE_OWNER_USER_ID;if(!admin)return rejected(request,'Workspace owner sign-in required.',403);const url=new URL(request.url);if(url.protocol!=='https:'||url.search||!['GET','POST'].includes(request.method))return rejected(request,'Use the secure Analytics page.',403);const service=deps.service??ga4PropertyConfigurationService();if(request.method==='GET')return safeJson(await service.status());if(request.headers.get('origin')!==url.origin)return rejected(request,'Use this workspace to save settings.',403);let input:unknown;try{input=ga4PropertyConfigurationInput.parse(JSON.parse(await readSmallBody(request)));}catch{return safeJson({error:'Enter a valid GA4 property ID, or clear the setting.'},400);}return safeJson(await service.save(input,admin.subject));}catch{return safeJson({error:'Settings changed or are unavailable. Refresh before saving again.'},409);}}

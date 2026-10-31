@@ -1,0 +1,6 @@
+export function validEncryptionKey(key:string|undefined){try{return !!key&&/^[A-Za-z0-9+/]{43}=$/.test(key)&&atob(key).length===32;}catch{return false;}}
+const encode=(value:Uint8Array)=>btoa(String.fromCharCode(...value));
+const decode=(value:string)=>Uint8Array.from(atob(value),char=>char.charCodeAt(0));
+async function importKey(key:string){if(!validEncryptionKey(key))throw new Error('Encryption unavailable');return crypto.subtle.importKey('raw',decode(key),{name:'AES-GCM'},false,['encrypt','decrypt']);}
+export async function encryptValue(value:string,aad:string,key:string){const nonce=crypto.getRandomValues(new Uint8Array(12));const encrypted=await crypto.subtle.encrypt({name:'AES-GCM',iv:nonce,additionalData:new TextEncoder().encode(aad)},await importKey(key),new TextEncoder().encode(value));return 'v1.'+encode(nonce)+'.'+encode(new Uint8Array(encrypted));}
+export async function decryptValue(value:string,aad:string,key:string){const [version,nonce,cipher,...rest]=value.split('.');if(version!=='v1'||rest.length||!nonce||!cipher)throw new Error('Encrypted value unavailable');try{return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:decode(nonce),additionalData:new TextEncoder().encode(aad)},await importKey(key),decode(cipher)));}catch{throw new Error('Encrypted value unavailable');}}

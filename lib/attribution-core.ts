@@ -1,0 +1,12 @@
+import {consentKey} from './purpose-consent-core';
+export const ATTRIBUTION_COOKIE='__Host-exposure_reference';
+export const ATTRIBUTION_WINDOW_MS=7*86400000;
+export type ExposureReference={versionId:string;compositionId:string;subjectHash:string;firstExposedAt:number;expiresAt:number};
+const encode=(value:Uint8Array)=>btoa(String.fromCharCode(...value)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const decode=(value:string)=>Uint8Array.from(atob(value.replace(/-/g,'+').replace(/_/g,'/')),char=>char.charCodeAt(0));
+async function key(secret:string){if(!consentKey(secret))throw new Error('Attribution unavailable');return crypto.subtle.importKey('raw',Uint8Array.from(atob(secret),char=>char.charCodeAt(0)),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);}
+function valid(value:unknown,now:number):value is ExposureReference{if(!value||typeof value!=='object')return false;const p=value as ExposureReference;return Object.keys(p).sort().join(',')==='compositionId,expiresAt,firstExposedAt,subjectHash,versionId'&&[p.versionId,p.compositionId].every(v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v))&&/^[0-9a-f]{64}$/.test(p.subjectHash)&&Number.isInteger(p.firstExposedAt)&&p.firstExposedAt>=0&&p.firstExposedAt<=now&&p.expiresAt===p.firstExposedAt+ATTRIBUTION_WINDOW_MS&&p.expiresAt>now;}
+const message=(body:string)=>new TextEncoder().encode('last-served-exposure:v1:'+body);
+export async function signExposureReference(payload:ExposureReference,secret:string){if(!valid(payload,Date.now()))throw new Error('Invalid exposure reference');const body=encode(new TextEncoder().encode(JSON.stringify(payload)));return body+'.'+encode(new Uint8Array(await crypto.subtle.sign('HMAC',await key(secret),message(body))));}
+export async function verifyExposureReference(value:string|null|undefined,secret:string|undefined,subjectHash:string,now=Date.now()):Promise<ExposureReference|null>{try{if(!value||value.length>2048||!secret)return null;const [body,signature,...rest]=value.split('.');if(rest.length||!body||!signature||!await crypto.subtle.verify('HMAC',await key(secret),decode(signature),message(body)))return null;const payload:unknown=JSON.parse(new TextDecoder().decode(decode(body)));return valid(payload,now)&&payload.subjectHash===subjectHash?payload:null;}catch{return null;}}
+export function clearExposureCookie(){return ATTRIBUTION_COOKIE+'=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0';}

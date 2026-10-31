@@ -1,0 +1,7 @@
+import {z} from 'zod/v3';
+export const durationBuckets=[1,5,10,25,50,100,250,500,1000,5000] as const;
+export const metricColumns=['request_count','duration_us','snapshot_count','snapshot_us','cache_count','cache_us','h1','h5','h10','h25','h50','h100','h250','h500','h1000','h5000','h_above'] as const;
+export const timingInput=z.object({at:z.number().int().nonnegative(),requestMs:z.number().finite().nonnegative().max(86400000),snapshotMs:z.number().finite().nonnegative().max(86400000).nullable(),cacheMs:z.number().finite().nonnegative().max(86400000).nullable(),outcome:z.enum(['served','redirected','rejected','unavailable']),cacheState:z.enum(['hit','miss','baseline','unavailable','incompatible-assets','storage-unavailable'])}).strict();
+export type PublicTiming=z.infer<typeof timingInput>;
+export const performanceWindow=z.object({from:z.number().int().nonnegative(),to:z.number().int().positive()}).strict().refine(v=>v.to>v.from&&v.to-v.from<=366*86400000);
+export function timingValues(input:PublicTiming){const value=timingInput.parse(input);const histogram=Array<number>(durationBuckets.length+1).fill(0);const index=durationBuckets.findIndex(bound=>value.requestMs<=bound);histogram[index<0?durationBuckets.length:index]=1;return {bucketStart:Math.floor(value.at/300000)*300000,outcome:value.outcome,cacheState:value.cacheState,values:[1,Math.round(value.requestMs*1000),value.snapshotMs===null?0:1,Math.round((value.snapshotMs??0)*1000),value.cacheMs===null?0:1,Math.round((value.cacheMs??0)*1000),...histogram]};}

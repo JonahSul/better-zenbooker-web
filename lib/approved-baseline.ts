@@ -1,0 +1,11 @@
+import {compileBusinessDocument} from './business-compiler';
+import {publicArtifacts} from './public-compiler';
+import {currentPublicContextDigest,snapshotContextMatches} from './public-context';
+import {HARD_RULES} from './experiment-core';
+export class ApprovedBaselineStore{
+ constructor(public db:D1Database){}
+ statement(sql:string,...args:unknown[]){return this.db.prepare(sql).bind(...args);}
+ async status(){const row=await this.statement('SELECT b.hash,b.renderer_version,b.asset_manifest_hash,b.rules_version,b.created_at FROM approved_baselines b JOIN approved_baseline_runtime r ON r.hash=b.hash WHERE r.id=1').first<{hash:string;renderer_version:string;asset_manifest_hash:string;rules_version:string;created_at:number}>();return {persisted:!!row,compatible:!!await this.compatible(),baseline:row,currentBuildHash:publicArtifacts.baseline.hash};}
+ async setup(actor:string){const baseline=await compileBusinessDocument();await this.db.batch([this.statement('INSERT OR IGNORE INTO approved_baselines(hash,html,renderer_version,asset_manifest_hash,rules_version,created_by,created_at) VALUES(?,?,?,?,?,?,?)',baseline.hash,baseline.html,publicArtifacts.rendererVersion,publicArtifacts.assetManifestHash,HARD_RULES.version,actor,Date.now()),this.statement('INSERT INTO approved_baseline_runtime(id,hash) VALUES(1,?) ON CONFLICT(id) DO UPDATE SET hash=excluded.hash',baseline.hash)]);const row=await this.statement('SELECT html FROM approved_baselines WHERE hash=?',baseline.hash).first<{html:string}>();if(row?.html!==baseline.html)throw new Error('Baseline readback mismatch');return {...await this.status(),exactHtmlReadback:true};}
+ async compatible(expectedDigest?:string|null){const digest=expectedDigest===undefined?await currentPublicContextDigest():expectedDigest;if(!digest)return null;const row=await this.statement('SELECT b.hash,b.html,b.renderer_version,b.asset_manifest_hash,b.rules_version FROM approved_baselines b JOIN approved_baseline_runtime r ON r.hash=b.hash WHERE r.id=1 AND b.renderer_version=? AND b.asset_manifest_hash=? AND b.rules_version=?',publicArtifacts.rendererVersion,publicArtifacts.assetManifestHash,HARD_RULES.version).first<{hash:string;html:string;renderer_version:string;asset_manifest_hash:string;rules_version:string}>();return row&&snapshotContextMatches(row.html,digest)?row:null;}
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `exp_runtime` ADD `operation_token` text;

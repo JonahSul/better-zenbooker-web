@@ -1,0 +1,20 @@
+.console .console-top .console-mobile-menu, .console-mobile-brand { display: none; }
+.console-mobile-drawer[data-slot="dialog-content"] { top: 0; left: 0; transform: none; width: min(20rem, calc(100vw - 2rem)); max-width: min(20rem, calc(100vw - 2rem)); height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0 12px 12px 0; padding: 24px 18px 18px; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 18px; overflow: hidden; }
+.console-mobile-drawer[data-slot="dialog-content"] > [data-slot="dialog-close"] { width: 44px; height: 44px; min-height: 44px; }
+.console-mobile-drawer .console-mobile-drawer-heading { padding-right: 44px; }
+.console-mobile-drawer [data-slot="dialog-title"] { padding-right: 0; }
+.console-mobile-drawer nav { display: grid; align-content: start; gap: 5px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.console-mobile-drawer nav a { display: flex; align-items: center; gap: 14px; min-height: 44px; padding: 11px 14px; border-radius: 9px; text-decoration: none; font-size: .87rem; font-weight: 600; color: #526157; }
+.console-mobile-drawer nav a > span { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 20px; }
+.console-mobile-drawer nav a .lucide { flex: none; margin: 0; }
+.console-mobile-drawer nav a[aria-current], .console-mobile-drawer nav a:hover { background: #eaf4ee; color: #065a2e; }
+.console-mobile-drawer nav a[aria-current] { box-shadow: inset 3px 0 #065a2e; }
+.console-mobile-drawer .console-kicker { margin: 14px 0 4px; font-size: .66rem; font-weight: 800; letter-spacing: .14em; color: #557264; }
+.console-mobile-drawer :focus-visible { outline: 3px solid #2f9cd1; outline-offset: 3px; }
+@media (max-width: 680px) {
+ .console .console-top .console-mobile-menu { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; flex: none; padding: 9px 11px; }
+ .console .console-mobile-brand { display: flex; flex: 1; min-width: 0; align-items: center; justify-content: center; }
+ .console-mobile-brand img { width: min(9rem, 100%); height: auto; max-height: 36px; object-fit: contain; }
+ .console .console-top-title { display: none; }
+ .console .console-top { gap: 8px; }
+}

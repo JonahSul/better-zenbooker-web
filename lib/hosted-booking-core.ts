@@ -1,0 +1,19 @@
+import {z} from 'zod/v3';
+export const HOSTED_BOOKING_URL=process.env.NEXT_PUBLIC_HOSTED_BOOKING_URL??'';
+export const BUSINESS_SERVICE_SOURCE=process.env.NEXT_PUBLIC_BUSINESS_SOURCE_URL??'';
+export const HOSTED_SERVICE_IDS:string[]=(process.env.NEXT_PUBLIC_HOSTED_SERVICE_IDS??'').split(',').map(s=>s.trim()).filter(Boolean);
+export const hostedHandoffBaseInput=z.object({offeringId:z.string().uuid().optional(),offeringsRevision:z.number().int().min(0).optional(),serviceId:z.string().min(1).max(150).regex(/^[a-zA-Z0-9_-]+$/).optional(),placement:z.enum(['header','hero','services','footer','booking','account'])}).strict();
+export function validHostedSelection(value:{offeringId?:string;offeringsRevision?:number;serviceId?:string}){return (value.offeringId===undefined)===(value.offeringsRevision===undefined)&&(!value.offeringId||!value.serviceId);}
+export const hostedHandoffInput=hostedHandoffBaseInput.refine(validHostedSelection);
+export type HostedHandoffInput=z.infer<typeof hostedHandoffInput>;
+export function buildHostedBookingUrl(value:HostedHandoffInput){const input=hostedHandoffInput.parse(value);const url=new URL(HOSTED_BOOKING_URL);void input;return url.href;}
+const names:string[]=[];
+// Archived source evidence only. Current booking choices come from published offerings.
+export function archivedHostedServiceUrl(serviceId:typeof HOSTED_SERVICE_IDS[number]){const url=new URL(HOSTED_BOOKING_URL);url.searchParams.set('preselected-service',z.string().min(1).max(150).regex(/^[a-zA-Z0-9_-]+$/).parse(serviceId));return url.href;}
+export const PUBLIC_SERVICE_LINKS=HOSTED_SERVICE_IDS.map((serviceId,index)=>({serviceId,name:names[index]??serviceId,url:archivedHostedServiceUrl(serviceId)}));
+export function parseClickSource(_value:unknown){void _value;return {status:'unverified' as const,clickId:null,correlationSupported:false as const};}
+export type PublicServiceSnapshot={status:'candidate'|'address_required'|'unavailable';source:'business_site'|'hosted_widget';sourceUrl:string;fetchedAt:string;completeness:'unknown';services:{serviceId:string;name:string;description:null;url:string}[]};
+const snapshotInput=z.object({sourceUrl:z.string().url(),html:z.string().max(262144),fetchedAt:z.string().datetime({offset:true})}).strict();
+export function parsePublicServiceSnapshot(value:z.infer<typeof snapshotInput>):PublicServiceSnapshot{const input=snapshotInput.parse(value);if(new TextEncoder().encode(input.html).length>262144)throw new Error('Public content exceeds the supported bound');const html=input.html.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>|<style\b[^>]*>[\s\S]*?<\/style\s*>|<!--[\s\S]*?-->/gi,'');const observed=new Set<string>();for(const match of html.matchAll(/<a\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>/gi)){try{const url=new URL(match[1].replace(/&amp;/gi,'&'),input.sourceUrl);if(url.origin!==new URL(HOSTED_BOOKING_URL).origin||url.pathname!==new URL(HOSTED_BOOKING_URL).pathname||url.username||url.password||url.hash||[...url.searchParams.keys()].some(key=>key!=='preselected-service')||url.searchParams.getAll('preselected-service').length!==1)continue;const id=url.searchParams.get('preselected-service');if(id&&HOSTED_SERVICE_IDS.some(known=>known===id))observed.add(id);}catch{/* Unknown source links are never followed or replayed. */}}const services=PUBLIC_SERVICE_LINKS.filter(service=>observed.has(service.serviceId)).map(service=>({...service,description:null}));const addressOnly=input.sourceUrl===HOSTED_BOOKING_URL&&services.length===0&&/<(?:form|input)\b/i.test(html)&&/\b(?:address|street|postal)\b/i.test(html);return {status:services.length?'candidate':addressOnly?'address_required':'unavailable',source:input.sourceUrl===BUSINESS_SERVICE_SOURCE?'business_site':'hosted_widget',sourceUrl:input.sourceUrl,fetchedAt:input.fetchedAt,completeness:'unknown',services};}
+
+

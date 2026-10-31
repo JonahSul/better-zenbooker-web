@@ -1,0 +1,21 @@
+.account-preferences { max-height: 85dvh; overflow: auto; gap: 1rem; }
+.account-preferences form { display: grid; gap: 1rem; min-inline-size: 0; }
+.account-preferences form > label:first-child { display: grid; gap: .35rem; }
+.account-preferences select { width: 100%; min-height: 44px; padding: .55rem .7rem; border: 1px solid #b8cfc1; border-radius: 6px; background: #fff; color: #1d231c; }
+.account-preferences fieldset { min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+.account-preferences legend { margin-bottom: .35rem; font-weight: 600; }
+.account-preferences-topics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .15rem .8rem; }
+.account-preferences-option { display: flex; align-items: center; gap: .6rem; min-block-size: 44px; cursor: pointer; }
+.account-preferences-option input[type="checkbox"] { inline-size: 1.1rem; block-size: 1.1rem; flex: none; margin: 0; padding: 0; accent-color: #065a2e; }
+.account-preferences-remember { display: flex; align-items: flex-start; gap: .6rem; min-block-size: 44px; cursor: pointer; }
+.account-preferences-remember input[type="checkbox"] { inline-size: 1.1rem; block-size: 1.1rem; flex: none; margin: 0; padding: 0; accent-color: #065a2e; }
+.account-preferences-primary { min-height: 44px; padding: .65rem 1rem; border: 1px solid #065a2e; border-radius: 6px; background: #065a2e; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.account-preferences-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+.account-preferences-actions button, .account-preferences details > button { min-height: 44px; padding: .6rem .8rem; border: 1px solid #b8cfc1; border-radius: 6px; background: #fff; color: #065a2e; font: inherit; cursor: pointer; }
+.account-preferences-activity { max-inline-size: 100%; overflow: auto; }
+.account-preferences-activity table { width: 100%; margin: 0; font-size: .85rem; }
+.account-preferences-activity th, .account-preferences-activity td { padding: .65rem .5rem; vertical-align: top; }
+.account-preferences-activity caption { margin: 0 0 .4rem; font-size: .85rem; font-weight: 600; }
+.account-preferences-activity time { white-space: nowrap; }
+.account-preferences details > p { margin-block: .5rem; }
+@media (max-width: 380px) { .account-preferences-topics { grid-template-columns: 1fr; } }

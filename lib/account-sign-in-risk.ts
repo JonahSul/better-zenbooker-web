@@ -1,0 +1,5 @@
+import type {BookingAccountContext,SupportAccountContext} from './account-surface';
+export type SignInRisk={bookingFrameMounted:boolean;unrestorableText:boolean;selectedPhoto:boolean;pendingReply:boolean};
+export function collectSignInRisk(contexts:readonly {signInRisk:()=>SignInRisk}[]):SignInRisk{const risk:SignInRisk={bookingFrameMounted:false,unrestorableText:false,selectedPhoto:false,pendingReply:false};for(const context of contexts){const current=context.signInRisk();for(const key of Object.keys(risk) as (keyof SignInRisk)[])risk[key]||=current[key]===true;}return risk;}
+export function signInNeedsWarning(risk:SignInRisk){return risk.bookingFrameMounted||risk.unrestorableText||risk.selectedPhoto||risk.pendingReply;}
+export function selectActiveAccountContexts(snapshot:{bookings:readonly BookingAccountContext[];supports:readonly SupportAccountContext[]}){const support=[...snapshot.supports].reverse().find(context=>context.active)??null,booking=support?.returnContext==='support-chat'?null:[...snapshot.bookings].reverse().find(context=>context.active&&(!support||context.returnContext==='support-booking'))??null;return {booking,support};}

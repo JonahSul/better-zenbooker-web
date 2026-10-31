@@ -1,0 +1,14 @@
+import {consentKey} from './purpose-consent-core';
+export const TAG_IDENTITY_COOKIE='__Host-ga_tag_identity';
+export const TAG_IDENTITY_MAX_AGE_MS=86400000;
+export const validMeasurementId=(value:unknown):value is string=>typeof value==='string'&&/^G-[A-Z0-9]{6,15}$/.test(value);
+export const validTagClientId=(value:unknown):value is string=>typeof value==='string'&&/^\d{1,20}\.\d{1,20}$/.test(value);
+export type TagIdentity={clientId:string;measurementId:string;subjectHash:string;grantRevision:number;expiresAt:number;analyticsGrantHash?:string;analyticsRevision?:number};
+const encode=(bytes:Uint8Array)=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const decode=(value:string)=>Uint8Array.from(atob(value.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+async function key(secret:string){if(!consentKey(secret))throw new Error('Tag identity unavailable');return crypto.subtle.importKey('raw',Uint8Array.from(atob(secret),c=>c.charCodeAt(0)),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']);}
+function valid(value:unknown,now:number):value is TagIdentity{if(!value||typeof value!=='object')return false;const v=value as TagIdentity;return ['clientId,expiresAt,grantRevision,measurementId,subjectHash','analyticsGrantHash,analyticsRevision,clientId,expiresAt,grantRevision,measurementId,subjectHash'].includes(Object.keys(v).sort().join(','))&&(v.analyticsGrantHash===undefined||/^[0-9a-f]{64}$/.test(v.analyticsGrantHash)&&Number.isInteger(v.analyticsRevision)&&v.analyticsRevision!>0)&&validTagClientId(v.clientId)&&validMeasurementId(v.measurementId)&&/^[0-9a-f]{64}$/.test(v.subjectHash)&&Number.isInteger(v.grantRevision)&&v.grantRevision>=0&&Number.isInteger(v.expiresAt)&&v.expiresAt>now&&v.expiresAt<=now+TAG_IDENTITY_MAX_AGE_MS;}
+const message=(body:string)=>new TextEncoder().encode('google-tag-identity:v1:'+body);
+export async function signTagIdentity(value:TagIdentity,secret:string){if(!valid(value,Date.now()))throw new Error('Invalid tag identity');const body=encode(new TextEncoder().encode(JSON.stringify(value)));return body+'.'+encode(new Uint8Array(await crypto.subtle.sign('HMAC',await key(secret),message(body))));}
+export async function verifyTagIdentity(cookie:string|null|undefined,secret:string|undefined,subjectHash:string,measurementId:string,now=Date.now()):Promise<TagIdentity|null>{try{if(!cookie||cookie.length>2048||!secret)return null;const [body,signature,...rest]=cookie.split('.');if(rest.length||!body||!signature||!await crypto.subtle.verify('HMAC',await key(secret),decode(signature),message(body)))return null;const value:unknown=JSON.parse(new TextDecoder().decode(decode(body)));return valid(value,now)&&value.subjectHash===subjectHash&&value.measurementId===measurementId?value:null;}catch{return null;}}
+export function clearTagIdentityCookie(){return TAG_IDENTITY_COOKIE+'=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0';}

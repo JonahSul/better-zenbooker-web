@@ -1,0 +1,11 @@
+export const CUSTOMER_SESSION_COOKIE='__Host-customer_session';
+export const CUSTOMER_BROWSER_COOKIE='__Host-customer_browser';
+export const OTP_TTL_MS=10*60*1000;
+export const CUSTOMER_SESSION_TTL_MS=7*24*60*60*1000;
+export function normalizeEmail(value:string){const email=value.trim().toLowerCase();if(email.length>254||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error('Invalid email');return email;}
+export function randomOpaque(){return Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');}
+export function randomOtp(){const ceiling=Math.floor(0x100000000/1000000)*1000000;for(let i=0;i<100;i++){const n=crypto.getRandomValues(new Uint32Array(1))[0];if(n<ceiling)return String(n%1000000).padStart(6,'0');}throw new Error('Randomness unavailable');}
+export type OtpBinding={challengeId:string;recipient:string;purpose:'customer-login';browserSecret:string;expiresAt:number};
+const utf8=new TextEncoder();
+export async function otpDigest(rootBase64:string,binding:OtpBinding,code:string){if(!/^\d{6}$/.test(code))throw new Error('Invalid code');let bytes:Uint8Array<ArrayBuffer>;try{bytes=Uint8Array.from(atob(rootBase64),c=>c.charCodeAt(0));}catch{throw new Error('Crypto unavailable');}if(bytes.length!==32)throw new Error('Crypto unavailable');const root=await crypto.subtle.importKey('raw',bytes,'HKDF',false,['deriveKey']);const key=await crypto.subtle.deriveKey({name:'HKDF',hash:'SHA-256',salt:utf8.encode('customer-email-otp:v1'),info:utf8.encode(binding.purpose)},root,{name:'HMAC',hash:'SHA-256',length:256},false,['sign']);const encoded=JSON.stringify([binding.challengeId,normalizeEmail(binding.recipient),binding.purpose,binding.browserSecret,binding.expiresAt,code]);const digest=await crypto.subtle.sign('HMAC',key,utf8.encode(encoded));return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');}
+export async function verifyOtpDigest(root:string,binding:OtpBinding,code:string,expected:string){if(!/^\d{6}$/.test(code)||! /^[0-9a-f]{64}$/.test(expected))return false;const actual=await otpDigest(root,binding,code);let diff=0;for(let i=0;i<64;i++)diff|=actual.charCodeAt(i)^expected.charCodeAt(i);return diff===0;}

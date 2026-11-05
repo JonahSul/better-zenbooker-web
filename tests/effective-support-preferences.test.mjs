@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { enabledModuleFixture } from './fixtures/module-config-fixture.mjs';
+import { loadAbuseCore } from './fixtures/load-ts-test-module.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
@@ -39,7 +40,7 @@ const resolverModule = await loadTs('lib/effective-support-preferences.ts', {
 const { resolveEffectiveSupportPreferences } = resolverModule;
 const { supportPreferenceContextSchema, supportPreferenceGuard } = contextModule;
 
-const supportCore = await loadTs('lib/support-core.ts', { zod: require('zod/v3') });
+const supportCore = await loadTs('lib/support-core.ts', { zod: require('zod/v3'), './visitor-abuse-core': await loadAbuseCore(root) });
 const supportTools = await loadTs('lib/support-tools.ts', {
   'cloudflare:workers': { env: supportEnv },
   './module-config': { ...supportModuleConfig, maintenanceOperation: () => undefined },
@@ -53,6 +54,9 @@ const supportTools = await loadTs('lib/support-tools.ts', {
 let onTool;
 const supportService = await loadTs('lib/support-service.ts', {
   zod: require('zod/v3'),
+  './visitor-abuse-core': await loadAbuseCore(root),
+  './visitor-abuse-service': { abuseNoticeAnswer: () => 'A local safety notice.' },
+  './visitor-budget-core': await loadTs('lib/visitor-budget-core.ts', {}),
   './support-grounding': {
     routeSupportQuestion: () => 'supported',
     guardSupportAnswer: answer => ({ allowed: true, answer }),

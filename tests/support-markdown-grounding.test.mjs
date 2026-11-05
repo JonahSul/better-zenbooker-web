@@ -5,17 +5,20 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
+import { loadAbuseCore } from './fixtures/load-ts-test-module.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 const ts = await import('typescript');
 const supportSource = await readFile(path.join(root, 'lib/support-core.ts'), 'utf8');
+const abuseCore = await loadAbuseCore(root);
 const supportJs = ts.default.transpileModule(supportSource, {
   compilerOptions: { module: ts.default.ModuleKind.CommonJS, target: ts.default.ScriptTarget.ES2022 },
 }).outputText;
 const supportModule = { exports: {} };
 new Function('require', 'module', 'exports', supportJs)(specifier => {
   if (specifier === 'zod/v3') return require(specifier);
+  if (specifier === './visitor-abuse-core') return abuseCore;
   throw new Error(`Unexpected support-core dependency: ${specifier}`);
 }, supportModule, supportModule.exports);
 const support = supportModule.exports;

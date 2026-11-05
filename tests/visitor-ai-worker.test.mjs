@@ -12,6 +12,7 @@ const require = createRequire(import.meta.url);
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const sourceRequire = (specifier) => {
   if (specifier === 'zod/v3') return require(specifier);
+  if (specifier === 'node:net') return require(specifier);
   throw new Error(`Unexpected visitor AI worker import: ${specifier}`);
 };
 
@@ -28,11 +29,18 @@ async function loadTs(relativePath, imports = {}) {
   return loaded.exports;
 }
 
-const supportCore = await loadTs('lib/support-core.ts');
+const abuseCore = await loadTs('lib/visitor-abuse-core.ts', { 'node:net': require('node:net') });
+const supportCore = await loadTs('lib/support-core.ts', { './visitor-abuse-core': abuseCore });
 const supportPhotoCore = await loadTs('lib/support-photo-core.ts');
+const budgetCore = await loadTs('lib/visitor-budget-core.ts');
+const fakeBudgetAdmission = { async admittedBinding(_request, _environment, ai) { return ai?.run ? { run: (model, input) => ai.run(model, input) } : { run: undefined }; } };
+const fakeImageAdmission = { async admittedImages(_request, _environment, images) { return { images, async complete() {} }; } };
 const worker = await loadTs('integrations/visitor-ai/worker.ts', {
   '../../lib/support-core': supportCore,
   '../../lib/support-photo-core': supportPhotoCore,
+  '../../lib/visitor-budget-core': budgetCore,
+  '../../lib/visitor-budget-admission': fakeBudgetAdmission,
+  '../../lib/visitor-image-admission': fakeImageAdmission,
 });
 const rawToken = '22'.repeat(32);
 const verifier = createHash('sha256').update(rawToken).digest('hex');
@@ -129,7 +137,7 @@ test('visitor AI health is a readiness hint only and an unknown provider tool ca
   } };
   const health = await worker.handleVisitorAi(request('/health', { method: 'GET' }), ai, verifier);
   assert.equal(health.status, 200);
-  assert.deepEqual(await health.json(), { available: true, model: supportCore.SUPPORT_MODEL, inferenceVerified: false, imagesAvailable: false, visionModel: supportPhotoCore.VISION_MODEL });
+  assert.deepEqual(await health.json(), { admissionReady: false, pricingExpiresAt: null, policy: 'visitor-budget-v1', available: true, model: supportCore.SUPPORT_MODEL, inferenceVerified: false, imagesAvailable: false, visionModel: supportPhotoCore.VISION_MODEL });
   const response = await worker.handleVisitorAi(request('/infer', { body: validInference }), ai, verifier);
   assert.equal(response.status, 503);
   assert.doesNotMatch(await response.text(), /inquiries_list/);

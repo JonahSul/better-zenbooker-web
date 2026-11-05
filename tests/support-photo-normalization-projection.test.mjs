@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import ts from 'typescript';
+import { loadAbuseCore } from './fixtures/load-ts-test-module.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
@@ -24,10 +25,13 @@ async function loadTs(relativePath, imports) {
 }
 
 const photoCore = await loadTs('lib/support-photo-core.ts', {});
-const supportCore = await loadTs('lib/support-core.ts', {});
+const supportCore = await loadTs('lib/support-core.ts', { './visitor-abuse-core': await loadAbuseCore(root) });
 const worker = await loadTs('integrations/visitor-ai/worker.ts', {
   '../../lib/support-core': supportCore,
   '../../lib/support-photo-core': photoCore,
+  '../../lib/visitor-budget-core': await loadTs('lib/visitor-budget-core.ts', {}),
+  '../../lib/visitor-budget-admission': { admittedBinding: async (_request, _env, ai) => ai },
+  '../../lib/visitor-image-admission': { admittedImages: async (_request, _env, images) => ({ images, complete: async () => {} }) },
 });
 const photoTestModules = new Set(['ai', 'photos', 'visitor_support']);
 async function assertTestModule(runtime, module) {
@@ -41,6 +45,7 @@ const moduleGuard = {
   },
 };
 const proxyModule = await loadTs('lib/support-proxy.ts', {
+  './visitor-budget-core': await loadTs('lib/visitor-budget-core.ts', {}),
   './support-photo-core': photoCore,
   'cloudflare:workers': { env: {} },
   './module-config': moduleGuard,
@@ -83,6 +88,10 @@ function proxyFor(response) {
   };
   const instance = new proxyModule.SupportProxy(store, 'https://visitor-ai.test', fetch, () => true, {
     qaEnabledModules: photoTestModules,
+    VISITOR_AI_CONTEXT_KEY: 'synthetic-context-key-for-photo-projection-tests',
+    VISITOR_AI_INSTALLATION_ID: 'fixture-workspace',
+    VISITOR_AI_POLICY_REVIEWED_UNTIL: '2035-01-01T00:00:00.000Z',
+    VISITOR_AI_OUTPUT_BOUND_VERIFIED: 'true',
     AI: { run: async () => { throw new Error('unexpected provider binding call'); } },
   });
   instance.transport = async (url, init) => {

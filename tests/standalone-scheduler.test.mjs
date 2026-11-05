@@ -67,6 +67,14 @@ function fixture(overrides = {}) {
   return { state, runtime: { DB: {}, INSTALLATION_ID: 'qa-installation', AI: { run: async () => ({}) } } };
 }
 
+function recentDailyEvent(minute = 15) {
+  const now = Date.now();
+  const currentDay = new Date(now);
+  let candidate = Date.UTC(currentDay.getUTCFullYear(), currentDay.getUTCMonth(), currentDay.getUTCDate(), 7, minute);
+  if (candidate > now + 300000) candidate -= 86400000;
+  return candidate;
+}
+
 test('scheduled handler keeps privacy cleanup available while schedule and AI are disabled', async () => {
   const { state, runtime } = fixture();
   const dispatch = await loadScheduler(state);
@@ -82,12 +90,12 @@ test('scheduled handler keeps privacy cleanup available while schedule and AI ar
 test('scheduled curation requires an exact UTC event and emits the same daily idempotency key without publishing', async () => {
   const { state, runtime } = fixture({ enabled: true });
   const dispatch = await loadScheduler(state);
-  const scheduledTime = Date.UTC(2026, 9, 31, 7, 15);
+  const scheduledTime = recentDailyEvent();
   const wrongCron = await dispatch(runtime, { scheduledTime, cron: '16 7 * * *' });
   assert.equal(wrongCron.generation, 'not_due');
-  const wrongMinute = await dispatch(runtime, { scheduledTime: Date.UTC(2026, 9, 31, 7, 14), cron: '15 7 * * *' });
+  const wrongMinute = await dispatch(runtime, { scheduledTime: recentDailyEvent(14), cron: '15 7 * * *' });
   assert.equal(wrongMinute.generation, 'not_due');
-  const result = await dispatch(runtime, { scheduledTime: Date.UTC(2026, 9, 31, 7, 15), cron: '15 7 * * *' });
+  const result = await dispatch(runtime, { scheduledTime, cron: '15 7 * * *' });
   assert.equal(result.generation, 'processed');
   assert.equal(result.published, false);
   assert.equal(state.modelCalls, 1);
@@ -95,7 +103,7 @@ test('scheduled curation requires an exact UTC event and emits the same daily id
   const firstKey = state.curations[0].key;
   assert.match(firstKey, /^schedule_digest-/);
   assert.match(state.curations[0].actor, /^system:scheduled:digest-/);
-  await dispatch(runtime, { scheduledTime: Date.UTC(2026, 9, 31, 7, 15), cron: '15 7 * * *' });
+  await dispatch(runtime, { scheduledTime, cron: '15 7 * * *' });
   assert.equal(state.curations[1].key, firstKey, 'repeat deliveries of a daily event share the durable store request key');
   assert.equal(state.curations[1].actor, state.curations[0].actor);
   assert.equal(state.curations[1].published, undefined, 'the scheduler has no publish capability');
@@ -104,7 +112,7 @@ test('scheduled curation requires an exact UTC event and emits the same daily id
 test('scheduler rechecks its module gate immediately before model dispatch', async () => {
   const { state, runtime } = fixture({ enabled: true, turnOffAtAiCheck: true });
   const dispatch = await loadScheduler(state);
-  const result = await dispatch(runtime, { scheduledTime: Date.UTC(2026, 9, 31, 7, 15), cron: '15 7 * * *' });
+  const result = await dispatch(runtime, { scheduledTime: recentDailyEvent(), cron: '15 7 * * *' });
   assert.equal(result.generation, 'unavailable');
   assert.equal(state.modelCalls, 0);
   assert.ok(state.moduleChecks.length >= 2, 'expected readiness checks before prep and dispatch');

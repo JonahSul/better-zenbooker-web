@@ -5,18 +5,21 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+import { loadAbuseCore } from './fixtures/load-ts-test-module.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
 process.env.NEXT_PUBLIC_HOSTED_BOOKING_URL ??= 'https://widget.zenbooker.com/book/test-business?embed=true';
 process.env.NEXT_PUBLIC_BUSINESS_PHONE ??= '+1 303 555 0123';
 const source = await readFile(path.join(root, 'lib/support-core.ts'), 'utf8');
+const abuseCore = await loadAbuseCore(root);
 const js = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 const loaded = { exports: {} };
 new Function('require', 'module', 'exports', js)(specifier => {
   if (specifier === 'zod/v3') return require('zod/v3');
+  if (specifier === './visitor-abuse-core') return abuseCore;
   throw new Error(`Unexpected support-core dependency: ${specifier}`);
 }, loaded, loaded.exports);
 const support = loaded.exports;
@@ -61,9 +64,9 @@ test('feedback is bound to a known turn and cannot carry free-form text', () => 
   assert.throws(() => support.supportFeedbackInput.parse({ ...feedback, threadId: 'not-a-uuid' }));
 });
 
-test('model tool registry contains only public search, own visitor memory and escalation', () => {
+test('model tool registry contains public search, own visitor memory, escalation and the scoped abuse report tool', () => {
   assert.deepEqual(support.supportToolNames, [
-    'public_kb.search', 'own_memory.read', 'own_memory.update', 'own_memory.delete', 'support.escalate',
+    'public_kb.search', 'own_memory.read', 'own_memory.update', 'own_memory.delete', 'support.escalate', 'visitor.abuse_report',
   ]);
   assert.equal(support.supportToolArguments['public_kb.search'].safeParse({ query: 'service area' }).success, true);
   assert.equal(support.supportToolArguments['public_kb.search'].safeParse({ query: 'x', url: 'https://evil.example' }).success, false);
@@ -72,6 +75,8 @@ test('model tool registry contains only public search, own visitor memory and es
   assert.equal(support.supportToolArguments['own_memory.delete'].safeParse({ revision: 1 }).success, true);
   assert.equal(support.supportToolArguments['support.escalate'].safeParse({ reason: 'urgent' }).success, true);
   assert.equal(support.supportToolArguments['support.escalate'].safeParse({ reason: 'send_email' }).success, false);
+  assert.equal(support.supportToolArguments['visitor.abuse_report'].safeParse({ reason: 'targeted_harassment', evidence: 'A bounded current-user quote.' }).success, true);
+  assert.equal(support.supportToolArguments['visitor.abuse_report'].safeParse({ reason: 'targeted_harassment', evidence: 'A bounded current-user quote.', ip: '203.0.113.1' }).success, false);
   assert.equal(support.supportToolArguments['admin.inquiries.list'], undefined);
   assert.equal(support.supportToolArguments['booking.create'], undefined);
 });

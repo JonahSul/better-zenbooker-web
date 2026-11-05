@@ -33,6 +33,7 @@ async function loadWorker() {
       return text;
     } },
     '../lib/standalone-scheduler': { dispatchScheduled: async () => ({ cleanup: 'complete' }) },
+    '../lib/visitor-abuse-outbox': { runVisitorAbuse: async () => ({ status: 'idle', processed: 0 }) },
     '../lib/hosted-bridge-runtime': { localHostedWebhook: async () => Response.json({}), localHostedBridgeMaintenance: async () => ({ status: 'unavailable' }) },
     '../lib/experiment-runtime': { serveExperimentDocument: async () => new Response('compiled document') },
     '../lib/module-config': {

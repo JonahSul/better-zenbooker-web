@@ -25,11 +25,18 @@ async function loadTs(relativePath, imports = {}) {
   return loaded.exports;
 }
 
-const supportCore = await loadTs('lib/support-core.ts');
+const abuseCore = await loadTs('lib/visitor-abuse-core.ts', { 'node:net': require('node:net') });
+const supportCore = await loadTs('lib/support-core.ts', { './visitor-abuse-core': abuseCore });
 const photoCore = await loadTs('lib/support-photo-core.ts');
+const budgetCore = await loadTs('lib/visitor-budget-core.ts');
+const fakeBudgetAdmission = { async admittedBinding(_request, _environment, ai) { return ai?.run ? { run: (model, input) => ai.run(model, input) } : { run: undefined }; } };
+const fakeImageAdmission = { async admittedImages(_request, _environment, images) { return { images, async complete() {} }; } };
 const worker = await loadTs('integrations/visitor-ai/worker.ts', {
   '../../lib/support-core': supportCore,
   '../../lib/support-photo-core': photoCore,
+  '../../lib/visitor-budget-core': budgetCore,
+  '../../lib/visitor-budget-admission': fakeBudgetAdmission,
+  '../../lib/visitor-image-admission': fakeImageAdmission,
 });
 const rawToken = '22'.repeat(32);
 const verifier = createHash('sha256').update(rawToken).digest('hex');
@@ -162,7 +169,8 @@ test('all six normalization failure stages are bounded and never spend a vision 
     }), { async run() { visionCalls++; throw new Error(failureSentinel); } }, verifier, images);
     assert.equal(response.status, 503, stage);
     const data = await response.json();
-    assert.deepEqual(data, { error: 'Photo normalization unavailable', normalization: { stage, reason, httpStatus: 503 } });
+    if (stage === 'bindingavailability') assert.deepEqual(data, { error: 'Photo processing unavailable' });
+    else assert.deepEqual(data, { error: 'Photo normalization unavailable', normalization: { stage, reason, httpStatus: 503 } });
     assert.equal(visionCalls, 0, `${stage} failures must stop before vision`);
     assert.doesNotMatch(JSON.stringify(data), /PRIVATE_IMAGE_ERROR_SENTINEL|Bearer|credential|secret|token/i);
   }

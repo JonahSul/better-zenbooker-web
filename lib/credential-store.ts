@@ -1,5 +1,5 @@
 import {encryptValue,decryptValue} from './encrypted-value';
-export const credentialKeys=['ADMIN_GOOGLE_CLIENT_SECRET','GOOGLE_BUSINESS_CLIENT_SECRET','GA4_MP_API_SECRET','WORKERS_AI_API_TOKEN','VECTORIZE_API_TOKEN','ZENBOOKER_API_KEY','CLOUDFLARE_EMAIL_API_TOKEN'] as const;
+export const credentialKeys=['ADMIN_GOOGLE_CLIENT_SECRET','GOOGLE_BUSINESS_CLIENT_SECRET','GA4_MP_API_SECRET','WORKERS_AI_API_TOKEN','VECTORIZE_API_TOKEN','ZENBOOKER_API_KEY','CLOUDFLARE_EMAIL_API_TOKEN','CLOUDFLARE_WAF_API_TOKEN'] as const;
 export type CredentialKey=typeof credentialKeys[number];
 export type CredentialState={project_id:string;revision:number;sealed_at:number|null;operation_token:string|null};
 export class CredentialStore{

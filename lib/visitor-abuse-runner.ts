@@ -1,0 +1,5 @@
+import {readSmallBody,safeJson} from './admin-auth-server';
+import {abuseRuntime,abuseStore,type AbuseRuntime} from './visitor-abuse-service';
+import {verifyAbuseRunner} from './visitor-abuse-runner-core';
+import {runVisitorAbuse} from './visitor-abuse-outbox';
+export async function visitorAbuseRunnerRoute(request:Request,runtime:AbuseRuntime=abuseRuntime()){try{if(!runtime.VISITOR_ABUSE_RUNNER_KEY||!runtime.INSTALLATION_ID)return safeJson({error:'Runner unavailable'},503);const body=await readSmallBody(request),nonce=await verifyAbuseRunner(request,body,runtime.VISITOR_ABUSE_RUNNER_KEY,runtime.INSTALLATION_ID);if(!nonce)return safeJson({error:'Unauthorized'},401);const store=abuseStore(runtime),claimed=await store.statement('INSERT OR IGNORE INTO visitor_abuse_runner_nonces(workspace_id,nonce,expires_at) VALUES(?,?,?)',store.workspace,nonce,Date.now()+120000).run();if(!claimed.meta.changes)return safeJson({error:'Replay rejected'},409);return safeJson(await runVisitorAbuse(runtime));}catch{return safeJson({error:'Runner unavailable'},503);}}

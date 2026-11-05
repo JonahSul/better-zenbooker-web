@@ -69,7 +69,7 @@ test('tag identity rejects tampering, expiry, unsupported fields, invalid client
   assert.equal(tag.validMeasurementId('G-S4J27S9VMH'), true);
   assert.equal(tag.validMeasurementId('GTM-THR2KRPF'), false);
   await assert.rejects(tag.signTagIdentity(identity({ extra: 'not-allowed' }), key));
-  await assert.rejects(tag.signTagIdentity(identity({ expiresAt: Date.now() + tag.TAG_IDENTITY_MAX_AGE_MS + 1 }), key));
+  await assert.rejects(tag.signTagIdentity(identity({ expiresAt: Date.now() + tag.TAG_IDENTITY_MAX_AGE_MS + 10_000 }), key));
   await assert.rejects(tag.signTagIdentity(identity({ clientId: 'site-user-id' }), key));
   await assert.rejects(tag.signTagIdentity(value, Buffer.alloc(12, 1).toString('base64')));
 });

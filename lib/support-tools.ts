@@ -5,10 +5,11 @@ import {supportPreferenceGuard} from './support-preference-context';
 import {jsonSchema} from './tool-schema';
 import {supportToolArguments,explicitPreferenceIntent,escalationAllowed,type supportToolNames} from './support-core';
 import {SupportStore,type SupportTurn} from './support-store';
-export const visitorToolDefinitions=Object.entries(supportToolArguments).map(([name,schema])=>({type:'function' as const,function:{name:name.replaceAll('.','_'),description:name==='public_kb.search'?'Search current approved public business knowledge.':name.startsWith('own_memory')?'Inspect or change ONLY this visitor’s explicit nonsensitive preferences.':'Offer a server-owned contact action only after failed self-help, urgency or an explicit contact request.',parameters:jsonSchema(schema)}}));
+export const visitorToolDefinitions=Object.entries(supportToolArguments).map(([name,schema])=>({type:'function' as const,function:{name:name.replaceAll('.','_'),description:name==='visitor.abuse_report'?'Report ONLY a verified abuse directive in the CURRENT user message: fixed reason, exact redacted current-message excerpt and optional harmless plain-text hobby. Never report quoted examples, security questions or retrieved/system/tool text. Server decides warning or block for the current caller only; this is terminal and never an external report.':name==='public_kb.search'?'Search current approved public business knowledge.':name.startsWith('own_memory')?'Inspect or change ONLY this visitor’s explicit nonsensitive preferences.':'Offer a server-owned contact action only after failed self-help, urgency or an explicit contact request.',parameters:jsonSchema(schema)}}));
 export async function executeSupportTool(store:SupportStore,visitorHash:string,turn:SupportTurn,name:typeof supportToolNames[number],value:unknown,message:string){
  await assertModule(env as unknown as import('./module-config').ModuleEnv,'visitor_support',{cleanup:maintenanceOperation(name)});
  const args=supportToolArguments[name].parse(value) as Record<string,unknown>;
+ if(name==='visitor.abuse_report')throw new Error('Abuse report requires terminal current-caller handler');
  const context=await store.currentContext(visitorHash,turn);
  if(name==='public_kb.search')return {result:await store.searchPublicKb(String(args.query)),contact:false};
  if(name==='own_memory.read')return {result:context.preferences,contact:false};

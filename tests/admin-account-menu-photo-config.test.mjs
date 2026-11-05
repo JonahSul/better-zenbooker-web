@@ -35,6 +35,7 @@ function loadSupportProxy() {
     if (specifier === '../integrations/visitor-ai/worker') return { handleVisitorAi: async () => { throw new Error('unexpected provider call'); } };
     if (specifier === 'zod/v3') return z;
     if (specifier === './support-photo-core') return { validateUpload() {}, normalizedPhotoSchema: z.z.object({}), stripWebpMetadata: (value) => value, normalizeVisionResult: (value) => value, VISION_MODEL: 'fixed-photo-model' };
+    if (specifier === './visitor-budget-core') return {};
     if (specifier === './support-schedule') return { SupportScheduleStore: class { async read() { return { status: 'not_recorded' }; } } };
     if (specifier === './encrypted-value') return { encryptValue: async () => '', decryptValue: async () => '', validEncryptionKey: () => false };
     if (specifier === '../integrations/zenbooker-bridge/core') return { capabilityVerifier: async () => '0'.repeat(64) };

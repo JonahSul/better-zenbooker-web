@@ -1,3 +1,4 @@
+import {abuseToolInput} from './visitor-abuse-core';
 import {z} from 'zod/v3';
 export const SUPPORT_MODEL='@cf/openai/gpt-oss-20b';
 export const SUPPORT_PROXY_ORIGIN='';
@@ -8,9 +9,10 @@ export const supportChatInput=z.object({threadId:z.string().uuid().optional(),re
 export const supportPreferenceInput=z.object({revision:z.number().int().min(0),remember:z.boolean(),answerLength:z.enum(['short','standard']),serviceInterests:z.array(z.string().uuid()).max(30)}).strict();
 export const supportFeedbackInput=z.object({threadId:z.string().uuid(),turnId:z.string().uuid(),vote:z.enum(['up','down']),reason:z.enum(['unclear','incorrect','unhelpful','other']).optional()}).strict();
 export const supportDeleteInput=z.object({revision:z.number().int().min(0)}).strict();
-export const supportToolNames=['public_kb.search','own_memory.read','own_memory.update','own_memory.delete','support.escalate'] as const;
+export const supportToolNames=['public_kb.search','own_memory.read','own_memory.update','own_memory.delete','support.escalate','visitor.abuse_report'] as const;
 export const modelReplySchema=z.object({answer:z.string().max(8000),toolCalls:z.array(z.object({name:z.enum(supportToolNames),arguments:z.record(z.unknown())}).strict()).max(3)}).strict();
 export const supportToolArguments={
+ 'visitor.abuse_report':abuseToolInput,
  'public_kb.search':z.object({query:z.string().min(1).max(500)}).strict(),
  'own_memory.read':z.object({}).strict(),
  'own_memory.update':supportPreferenceInput,
@@ -24,6 +26,6 @@ export function supportActions(contact=false){const actions:{type:'book'|'call',
 export function escalationAllowed(message:string,reason:string,selfHelpAttempted:boolean){if(reason==='requested_contact')return /\b(?:call|contact|phone|human|person|speak|talk to)\b/i.test(message);if(reason==='urgent')return /\b(?:urgent|flood|burst|leak|emergency)\b/i.test(message);return reason==='self_help_failed'&&selfHelpAttempted;}
 export const kbEditInput=z.object({documentId:z.string().uuid().optional(),revision:z.number().int().min(0),title:z.string().trim().min(3).max(160),body:z.string().trim().min(10).max(6000),source:z.enum(['business_site','owner_reviewed']),sourceUrl:z.string().url().refine(v=>{const u=new URL(v);return u.protocol==='https:'&&!u.username&&!u.password;})}).strict();
 export const supportConfigInput=z.object({revision:z.number().int().min(0),enabled:z.boolean(),dailyModelCalls:z.number().int().min(1).max(100)}).strict();
-export function normalizeSupportModelResult(value:unknown){const result=z.object({choices:z.array(z.object({message:z.object({content:z.string().nullable().optional(),tool_calls:z.array(z.object({function:z.object({name:z.string(),arguments:z.union([z.string(),z.record(z.unknown())])})})).optional()})})).min(1),usage:z.object({prompt_tokens:z.number().int().min(0).optional(),completion_tokens:z.number().int().min(0).optional(),total_tokens:z.number().int().min(0).optional()}).optional()}).parse(value);const message=result.choices[0].message;const map:Record<string,string>={public_kb_search:'public_kb.search',own_memory_read:'own_memory.read',own_memory_update:'own_memory.update',own_memory_delete:'own_memory.delete',support_escalate:'support.escalate'};return {reply:modelReplySchema.parse({answer:message.content??'',toolCalls:(message.tool_calls??[]).map(call=>({name:map[call.function.name]??call.function.name,arguments:typeof call.function.arguments==='string'?JSON.parse(call.function.arguments):call.function.arguments}))}),usage:result.usage??null};}
+export function normalizeSupportModelResult(value:unknown){const result=z.object({choices:z.array(z.object({message:z.object({content:z.string().nullable().optional(),tool_calls:z.array(z.object({function:z.object({name:z.string(),arguments:z.union([z.string(),z.record(z.unknown())])})})).optional()})})).min(1),usage:z.object({prompt_tokens:z.number().int().min(0).optional(),completion_tokens:z.number().int().min(0).optional(),total_tokens:z.number().int().min(0).optional()}).optional()}).parse(value);const message=result.choices[0].message;const map:Record<string,string>={public_kb_search:'public_kb.search',own_memory_read:'own_memory.read',own_memory_update:'own_memory.update',own_memory_delete:'own_memory.delete',support_escalate:'support.escalate',visitor_abuse_report:'visitor.abuse_report'};return {reply:modelReplySchema.parse({answer:message.content??'',toolCalls:(message.tool_calls??[]).map(call=>({name:map[call.function.name]??call.function.name,arguments:typeof call.function.arguments==='string'?JSON.parse(call.function.arguments):call.function.arguments}))}),usage:result.usage??null};}
 
 

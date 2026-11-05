@@ -4,7 +4,19 @@ import {encryptValue,validEncryptionKey} from './encrypted-value';
 import {VisitorAbuseStore} from './visitor-abuse-store';
 import {abuseHash,abuseToolInput,canonicalIp,directStructuredInjection,redactAbuseEvidence,safeHobby,validOffense,type AbuseNotice} from './visitor-abuse-core';
 export type AbuseRuntime={DB?:D1Database;INSTALLATION_ID?:string;VISITOR_ABUSE_IP_HMAC_KEY?:string;APP_CREDENTIAL_ENCRYPTION_KEY?:string;VISITOR_ABUSE_IP_MODE?:string;VISITOR_ABUSE_DIRECT_INGRESS_VERIFIED?:string;VISITOR_ABUSE_WAF_ACCOUNT_ID?:string;VISITOR_ABUSE_WAF_LIST_ID?:string;CLOUDFLARE_WAF_API_TOKEN?:string;VISITOR_ABUSE_RUNNER_KEY?:string;VISITOR_ABUSE_SITE_ORIGIN?:string};
-export function abuseRuntime(){return {...env,INSTALLATION_ID:SITE_PROJECT_ID} as AbuseRuntime;}
+export function abuseRuntime():AbuseRuntime{const runtime=env as unknown as AbuseRuntime;return {
+ DB:runtime.DB,
+ INSTALLATION_ID:runtime.INSTALLATION_ID??SITE_PROJECT_ID,
+ VISITOR_ABUSE_IP_HMAC_KEY:runtime.VISITOR_ABUSE_IP_HMAC_KEY,
+ APP_CREDENTIAL_ENCRYPTION_KEY:runtime.APP_CREDENTIAL_ENCRYPTION_KEY,
+ VISITOR_ABUSE_IP_MODE:runtime.VISITOR_ABUSE_IP_MODE,
+ VISITOR_ABUSE_DIRECT_INGRESS_VERIFIED:runtime.VISITOR_ABUSE_DIRECT_INGRESS_VERIFIED,
+ VISITOR_ABUSE_WAF_ACCOUNT_ID:runtime.VISITOR_ABUSE_WAF_ACCOUNT_ID,
+ VISITOR_ABUSE_WAF_LIST_ID:runtime.VISITOR_ABUSE_WAF_LIST_ID,
+ CLOUDFLARE_WAF_API_TOKEN:runtime.CLOUDFLARE_WAF_API_TOKEN,
+ VISITOR_ABUSE_RUNNER_KEY:runtime.VISITOR_ABUSE_RUNNER_KEY,
+ VISITOR_ABUSE_SITE_ORIGIN:runtime.VISITOR_ABUSE_SITE_ORIGIN
+ };}
 export function abuseStore(runtime:AbuseRuntime=abuseRuntime()){if(!runtime.DB||!runtime.INSTALLATION_ID)throw new Error('Abuse storage unavailable');return new VisitorAbuseStore(runtime.DB,runtime.INSTALLATION_ID);}
 /** Test/server transport seam only. No production route supplies a resolver until platform ingress enrollment is independently validated. */
 export type VerifiedAbuseIngress={verifiedIsolation:true;resolve:(request:Request)=>string|null};

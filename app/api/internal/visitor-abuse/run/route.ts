@@ -1,2 +1,2 @@
 import {visitorAbuseRunnerRoute} from '../../../../../lib/visitor-abuse-runner';
-export const POST=visitorAbuseRunnerRoute;
+export function POST(request:Request){return visitorAbuseRunnerRoute(request);}

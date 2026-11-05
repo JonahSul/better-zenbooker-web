@@ -37,6 +37,12 @@ async function signedRunnerRequest(workspace=installation){
  return new Request(sent.url,{method:sent.init.method,headers:sent.init.headers,body:sent.init.body});
 }
 
+async function loadAppPost(handler){
+ const source=await readFile(path.join(root,'app/api/internal/visitor-abuse/run/route.ts'),'utf8'),compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText,loaded={exports:{}};
+ new Function('require','module','exports',compiled)((specifier)=>{if(specifier.endsWith('lib/visitor-abuse-runner'))return {visitorAbuseRunnerRoute:handler};throw new Error('Unexpected route import '+specifier);},loaded,loaded.exports);
+ return loaded.exports.POST;
+}
+
 test('scheduled helper targets only the fixed HTTPS origin and runner path with a signed bounded body',async()=>{
  const calls=[];
  const response=await runner.triggerVisitorAbuseRunner({key,origin:'https://site.example',installation},async(url,init)=>{calls.push({url:String(url),init});return new Response(null,{status:202});});
@@ -108,6 +114,33 @@ test('default abuse runtime and internal runner read D1 and signing key from get
  assert.equal(dispatchedRuntime.DB,db);
  assert.equal(dispatchedRuntime.VISITOR_ABUSE_RUNNER_KEY,key);
  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM visitor_abuse_runner_nonces').first()).n,1);
+});
+
+test('actual internal app-route POST ignores framework context and uses the signed default runtime',async t=>{
+ const db=await createAbuseDb(t),previous=globalThis.__fixtureEnv;
+ t.after(()=>{globalThis.__fixtureEnv=previous;});
+ globalThis.__fixtureEnv={DB:db,VISITOR_ABUSE_RUNNER_KEY:key};
+ let verifiedKey=null,outboxCalls=0,dispatchedRuntime=null;
+ const verification={...runner,verifyAbuseRunner:async(request,body,receivedKey,workspace)=>{verifiedKey=receivedKey;return runner.verifyAbuseRunner(request,body,receivedKey,workspace);}};
+ const handler=await loadRunnerRoute(service,verification,async runtime=>{outboxCalls++;dispatchedRuntime=runtime;return {status:'unconfigured',processed:0};});
+ const post=await loadAppPost(handler),poison={params:Promise.resolve({runId:'ignored'}),DB:{prepare(){throw new Error('Context D1 must never be used');}},INSTALLATION_ID:'context-installation-not-site',VISITOR_ABUSE_RUNNER_KEY:'context-signing-key-not-site'};
+ const request=await signedRunnerRequest(),replay=request.clone();
+ const response=await post(request,poison);
+ assert.equal(response.status,200);
+ assert.deepEqual(await response.json(),{status:'unconfigured',processed:0});
+ assert.equal(verifiedKey,key);
+ assert.equal(dispatchedRuntime.DB,db);
+ assert.equal(dispatchedRuntime.INSTALLATION_ID,installation);
+ assert.equal(dispatchedRuntime.VISITOR_ABUSE_RUNNER_KEY,key);
+ assert.equal(outboxCalls,1);
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM visitor_abuse_runner_nonces').first()).n,1);
+ const replayResponse=await post(replay,poison);
+ assert.equal(replayResponse.status,409);
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM visitor_abuse_runner_nonces').first()).n,1);
+ const unsigned=new Request('https://site.example/api/internal/visitor-abuse/run',{method:'POST',headers:{'content-type':'application/json'},body:'{"purpose":"visitor_abuse_reconcile_v1","installation":"synthetic-installation"}'});
+ assert.equal((await post(unsigned,poison)).status,401);
+ assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM visitor_abuse_runner_nonces').first()).n,1);
+ assert.equal(outboxCalls,1);
 });
 
 test('default internal runner fails safely when only the key or only D1 is missing',async t=>{
